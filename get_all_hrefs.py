@@ -9,6 +9,9 @@ num = 0
 def find(url, SITE):
     global href_log
     hrefs = []
+    if url[-1] == '/':
+        url = url[:-1]
+    url_ = url.split('/')
     try:
         html = requests.get(url).text
         soup = BeautifulSoup(html, 'html.parser')
@@ -16,51 +19,76 @@ def find(url, SITE):
         for elem in elems:
             href = elem.get('href')
             if href:
+                if '#' in href:
+                    href = href[:href.index('#')]
+                
                 if not p.search(href):
-                    href = SITE + href
+                    href = href.split('/')
+                    #print(href)
+                    if href[0] == '.':
+                        href = '%s/%s' % ('/'.join(url_[:-1]), '/'.join(href[1:]))
+                    elif href[0] == '..':
+                        href = '%s/%s' % ('/'.join(url_[:-2]), '/'.join(href[1:]))
+                    elif href[0] == '':
+                        href = '%s/%s' % ('/'.join(SITE_[:3]), '/'.join(href[1:]))
+                    else:
+                        if '.' in url_[-1]:
+                            href = '%s/%s' % ('/'.join(url_[:-1]), '/'.join(href))
+                        else:
+                            href = '%s/%s' % ('/'.join(url_), '/'.join(href))
                 if href not in href_log:
                     href_log += [href]
                     hrefs += [href]
-    except:
+    except (socket.gaierror, requests.exceptions.ConnectionError):
         pass
-    return hrefs        
+    return hrefs     
 
 def insert(tree, Childs):
         tree.pop(-1)
-        for i in Childs:
-            tree.insert(len(tree), [i, []])
+        for child in Childs:
+            tree.insert(len(tree), [child, []])
 
 def expand_(tree, graph, SITE):
     global num
     if tree:
         if graph:
-            print('<%s> %s' % (num, tree[0]))
+            print('<%s> %s' % (num, root(tree)))
         num += 1
-        for i in tree[1:]:
-            insert(tree, find(tree[0], SITE))
-        for i in tree[1:]:
-            expand_(i, graph, SITE)
+        for subtree in subtrees(tree):
+            insert(tree, find(root(tree), SITE))
+        for subtree in subtrees(tree):
+            if root(subtree):
+                if '.' in SITE_[-1]:
+                    if '.'.join(SITE.split('.')[:-1]) in root(subtree):
+                        expand_(subtree, graph, SITE)
+                else:
+                    if SITE in root(subtree):
+                        expand_(subtree, graph, SITE)
 
 def preorder_(tree):
     global num
     if tree:
-        print(tree[0])
+        print(root(tree))
         num += 1
-        for i in tree[1:]:
-            preorder_(i) 
+        for subtree in subtrees(tree):
+            preorder_(subtree)
+            
+def root(tree):
+    return tree[0]
+def subtrees(tree):
+    return tree[1:]
               
 class Tree:
     def __init__(self, SITE):
-        self.Tree = [SITE, []]
         if SITE[-1] == '/':
             SITE = SITE[:-1]
+        self.Tree = [SITE, []]
         self.SITE = SITE
     def expand(self, graph = True):
+        global SITE_
+        SITE_ = self.SITE.split('/')
         num = 0
         expand_(self.Tree, graph, self.SITE)
     def preorder(self):
         num = 0
         preorder_(self.Tree)
-        
-           
-
