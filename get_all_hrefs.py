@@ -2,6 +2,7 @@ import requests
 import re
 from bs4 import BeautifulSoup
 
+p = re.compile(r'^http')
 hrefs = []
 href_log = []
 num = 0
@@ -14,7 +15,6 @@ def req(url): # на случай если произойдет разрыв с�
         req(url)
 
 def rel_orient(href): # преобразование относительных ссылок в жесткие
-    p = re.compile(r'^http')
     if not p.search(href):
         href_ = href.split('/')
         #print(href)
